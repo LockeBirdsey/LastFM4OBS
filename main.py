@@ -6,9 +6,9 @@ import os
 import urllib.request
 from pathlib import Path
 import logging
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
-#LastFM4OBS
+# LastFM4OBS
 
 # to build as exe
 # python -m PyInstaller -y -F --add-data ".\venv\Lib\site-packages\PIL\;PIL" --hidden-import numbers .\main.py
@@ -38,12 +38,36 @@ DEFAULT_FORMAT = str("Track:" + FORMAT_TRACK + "\nArtist:" + FORMAT_ARTIST)
 FORMAT = DEFAULT_FORMAT
 
 
-def write_blank_image(album=None):
-    img = Image.new('RGB', (600, 600), (69, 69, 69))
+def write_blank_image(dims, album=None):
+    HEADER = "No album art found :("
+
+    img = Image.new('RGB', dims, (0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([(10, 10), (dims[0] - 10, dims[1] - 10)], fill="gray", width=img.width)
     if album is not None:
-        d = ImageDraw.Draw(img)
-        d.text((10, 10), album, fill=(0, 0, 0))
+        font = scale_font(img, HEADER, "arial.ttf", img_width=dims[0] - 20)
+        draw.text((10, 25), HEADER, font=font, align="center")  # put the text on the image
+        font = scale_font(img, album, "arial.ttf", img_width=dims[0] - 20)
+        draw.text((10, 70), album, font=font, align="center")  # put the text on the image
+
     return img
+
+
+def scale_font(img, text, font_name, scale=0.8, img_width=None):
+    # Following code adapted from https://stackoverflow.com/questions/4902198/pil-how-to-scale-text-size-in
+    # -relation-to-the-size-of-the-image
+    fontsize = 1
+    # portion of image width you want text width to be
+    img_fraction = scale
+    if img_width is None:
+        img_width = img.size[0]
+
+    font = ImageFont.truetype(font_name, fontsize)
+    while font.getsize(text)[0] < img_fraction * img_width:
+        # iterate until the text size is just larger than the criteria
+        fontsize += 1
+        font = ImageFont.truetype(font_name, fontsize)
+    return font
 
 
 def format_info(source, target, content):
@@ -52,7 +76,7 @@ def format_info(source, target, content):
     return source
 
 
-def format_all_info(track=None, artist=None, album=None, year=None):
+def format_all_info(track=None, artist=None, album=None):
     string_format = str(FORMAT)
     string_format = string_format.replace("\\n", "\n")
     string_format = string_format.replace("\\t", "\t")
@@ -73,6 +97,22 @@ def format_all_info(track=None, artist=None, album=None, year=None):
         logging.error("Album name was not supplied when required", exc_info=True)
 
     return string_format
+
+
+def get_album_name(track):
+    # Get album information
+    album = track.get_album()
+    # If the album doesn't exist, use the track name for the album (e.g. a single)
+    if album is None:
+        return track.title
+    else:
+        return album.get_name()
+
+
+def check_same_album(a, b):
+    if a is None or b is None:
+        return False
+    return get_album_name(a) is get_album_name(b) and a.artist.title is b.artist.title
 
 
 if __name__ == "__main__":
@@ -120,6 +160,8 @@ if __name__ == "__main__":
     playing_track = None
     text_file = SAVING_DIR / "track.txt"
     alive = True
+    img_dims = (300, 300)
+    previous_track = None
     while alive:
 
         try:
@@ -127,38 +169,53 @@ if __name__ == "__main__":
 
             if new_track is None:
                 time.sleep(15)
+                print("No track playing")
                 continue
                 # Do nothing on none
 
             # A new, different track
             if new_track != playing_track:
+                # Remember previous track
+                previous_track = playing_track
+                # Assign the new track
                 playing_track = new_track
+                # Get the track name
                 track = playing_track.title
+                # Get the artist name
                 artist = playing_track.artist.name
-                album = playing_track.get_album()
-                album_name = album.title
-                cover_image_url = playing_track.get_cover_image()
 
-                if cover_image_url is not None:
+                # get the album name
+                album_name = get_album_name(playing_track)
+
+                cover_image_url = None
+
+                try:
+                    # Get the cover image (if it has one)
+                    cover_image_url = playing_track.get_cover_image()
                     urllib.request.urlretrieve(cover_image_url, SAVING_DIR / "image.png")
-                else:
-                    write_blank_image(album_name).save(SAVING_DIR / "image.png", "PNG")
+                    img = Image.open(SAVING_DIR / "image.png")
+                    img_dims = img.size
+                except Exception as ie:
+                    # see if its the same album as last time
+                    if not check_same_album(playing_track, previous_track):
+                        write_blank_image(img_dims, album_name).save(SAVING_DIR / "image.png", "PNG")
 
-                debug_out = "Track:{0}\nArtist:{1}".format(playing_track.title, playing_track.artist)
+                # Write out the textual information to the formatter
                 track_out = format_all_info(track=track, artist=artist,
                                             album=album_name)
-                print(track_out)
+                # Print to console
+                to_console = "Found track \"" + str(track) + "\" by \"" + str(artist) + "\" from the album \"" + str(
+                    album_name) + "\""
+                print(to_console)
+
+                # Write information to file
                 track_file = open(text_file, 'w', encoding='utf-8')
                 track_file.write(track_out)
                 track_file.close()
 
         except Exception as e:
-            print("Error occurred: %s" % repr(e))
+            print("Error occurred while writing out information: %s" % repr(e))
             logging.error("Error occurred while writing out information", exc_info=True)
-            error_count = error_count + 1
-            if error_count > MAX_ERROR_COUNT:
-                alive = False
 
         time.sleep(15)
-    print("Exiting due to too many errors")
 input()
