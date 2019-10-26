@@ -36,38 +36,40 @@ FORMAT_ALBUM = str("%ALBUM")
 
 DEFAULT_FORMAT = str("Track:" + FORMAT_TRACK + "\nArtist:" + FORMAT_ARTIST)
 FORMAT = DEFAULT_FORMAT
+MISSING_ALBUM_TEXT = "?"
 
 
 def write_blank_image(dims, album=None):
-    HEADER = "No album art found :("
-
     img = Image.new('RGB', dims, (0, 0, 0))
     draw = ImageDraw.Draw(img)
-    draw.rectangle([(10, 10), (dims[0] - 10, dims[1] - 10)], fill="gray", width=img.width)
+    draw.rectangle([(10, 10), (dims[0] - 10, dims[1] - 10)], fill="white", width=img.width)
     if album is not None:
-        font = scale_font(img, HEADER, "arial.ttf", img_width=dims[0] - 20)
-        draw.text((10, 25), HEADER, font=font, align="center")  # put the text on the image
-        font = scale_font(img, album, "arial.ttf", img_width=dims[0] - 20)
-        draw.text((10, 70), album, font=font, align="center")  # put the text on the image
+        font, fontsize = scale_font(img, MISSING_ALBUM_TEXT, "arial.ttf", img_width=dims[0] - 20, scale=0.6)
+        x = (fontsize[0] / 2) - 10
+        y = 0
+        draw.text((x, y), MISSING_ALBUM_TEXT, font=font, align="center", fill=(0, 0, 0))  # put the text on the image
+        # Print out the album name (make configurable)
+    # font = scale_font(img, album, "arial.ttf", img_width=dims[0] - 20)
+    # draw.text((10, 70), album, font=font, align="center")  # put the text on the image
 
     return img
 
 
-def scale_font(img, text, font_name, scale=0.8, img_width=None):
+def scale_font(image, text, font_name, scale=0.8, img_width=None):
     # Following code adapted from https://stackoverflow.com/questions/4902198/pil-how-to-scale-text-size-in
     # -relation-to-the-size-of-the-image
     fontsize = 1
     # portion of image width you want text width to be
     img_fraction = scale
     if img_width is None:
-        img_width = img.size[0]
+        img_width = image.size[0]
 
     font = ImageFont.truetype(font_name, fontsize)
     while font.getsize(text)[0] < img_fraction * img_width:
         # iterate until the text size is just larger than the criteria
         fontsize += 1
         font = ImageFont.truetype(font_name, fontsize)
-    return font
+    return font, font.getsize(text)
 
 
 def format_info(source, target, content):
@@ -104,9 +106,9 @@ def get_album_name(track):
     album = track.get_album()
     # If the album doesn't exist, use the track name for the album (e.g. a single)
     if album is None:
-        return track.title
+        return track.title, False
     else:
-        return album.get_name()
+        return album.get_name(), True
 
 
 def check_same_album(a, b):
@@ -163,7 +165,6 @@ if __name__ == "__main__":
     img_dims = (300, 300)
     previous_track = None
     while alive:
-
         try:
             new_track = user.get_now_playing()
 
@@ -180,9 +181,9 @@ if __name__ == "__main__":
                 # Assign the new track
                 playing_track = new_track
                 # Get the track name
-                track = playing_track.title
+                track_name = playing_track.title
                 # Get the artist name
-                artist = playing_track.artist.name
+                artist_name = playing_track.artist.name
 
                 # get the album name
                 album_name = get_album_name(playing_track)
@@ -201,11 +202,13 @@ if __name__ == "__main__":
                         write_blank_image(img_dims, album_name).save(SAVING_DIR / "image.png", "PNG")
 
                 # Write out the textual information to the formatter
-                track_out = format_all_info(track=track, artist=artist,
+                track_out = format_all_info(track=track_name, artist=artist_name,
                                             album=album_name)
                 # Print to console
-                to_console = "Found track \"" + str(track) + "\" by \"" + str(artist) + "\" from the album \"" + str(
-                    album_name) + "\""
+                to_console = "Found track \"" + str(track_name) + "\" by \"" + str(artist_name) + "\" from the album \"" \
+                             + str(album_name[0]) + "\""
+                if album_name[1] is False:
+                    to_console = to_console + " (Album is unknown)"
                 print(to_console)
 
                 # Write information to file
