@@ -3,6 +3,7 @@ import time
 
 import pylast
 import os
+import sys
 import urllib.request
 from pathlib import Path
 import logging
@@ -10,16 +11,17 @@ from PIL import Image, ImageDraw, ImageFont
 
 # LastFM4OBS
 
-# to build as exe
-# python -m PyInstaller -y -F --add-data ".\venv\Lib\site-packages\PIL\;PIL" --hidden-import numbers .\main.py
+# to build as exe C:\Users\lollb\AppData\Local\Programs\Python\Python37\python.exe -m PyInstaller -y -F --add-data
+# "C:\Users\lollb\PycharmProjects\LBLastFmToOBS\venv\Lib\site-packages\PIL\;PIL" --add-data
+# "assets\unknownalbumplaceholder.png;assets" --add-data "assets\api.ini;assets" --hidden-import numbers .\main.py
 
-EXEC_PATH = Path(os.path.dirname(os.path.realpath(__file__)))
+EXEC_PATH = Path(getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__))))
 logging.basicConfig(filename=EXEC_PATH / "log.log", filemode='w')
 
 # You have to have your own unique two values for API_KEY and API_SECRET
 # Obtain yours from https://www.last.fm/api/account/create for Last.fm
-API_KEY = "f6b159747f2b5d5ff48c3045cf05fa5c"
-API_SECRET = "f64f158a571927b9197368617ca9ac54"
+API_KEY = "SOME API KEY"
+API_SECRET = "SOME API SECRET"
 SESSION_KEY_FILE = os.path.join(os.path.expanduser("~"), ".session_key")
 
 SAVING_DIR = None
@@ -123,15 +125,15 @@ if __name__ == "__main__":
     # parse config file
     config = configparser.ConfigParser()
     try:
+        config.read(EXEC_PATH / 'assets' / 'api.ini', encoding='utf-8')
+        API_KEY = config['last.fm']['api-key']
+        API_SECRET = config['last.fm']['api-secret']
         print("Reading config")
         config.read('config.ini', encoding='utf-8')
         user = config['last.fm']['username']
-        API_KEY = config['last.fm']['api-key']
-        API_SECRET = config['last.fm']['api-secret']
         SAVING_DIR = Path(config['LOCAL']['directory'])
         FORMAT = config['LOCAL']['format']
         print("Using format: " + str(FORMAT))
-
         network = pylast.LastFMNetwork(api_key=API_KEY, api_secret=API_SECRET)
     except Exception as e:
         logging.error("Error occurred and logged", exc_info=True)
