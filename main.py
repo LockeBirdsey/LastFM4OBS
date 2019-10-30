@@ -37,6 +37,8 @@ FORMAT_ALBUM = str("%ALBUM")
 DEFAULT_FORMAT = str("Track:" + FORMAT_TRACK + "\nArtist:" + FORMAT_ARTIST)
 FORMAT = DEFAULT_FORMAT
 MISSING_ALBUM_TEXT = "?"
+ALBUM_PLACEHOLDER_PATH = EXEC_PATH / "assets" / "unknownalbumplaceholder.png"
+ALBUM_ART_NAME = "image.png"
 
 
 def write_blank_image(dims, album=None):
@@ -122,7 +124,7 @@ if __name__ == "__main__":
     config = configparser.ConfigParser()
     try:
         print("Reading config")
-        config.read('config.ini')
+        config.read('config.ini', encoding='utf-8')
         user = config['last.fm']['username']
         API_KEY = config['last.fm']['api-key']
         API_SECRET = config['last.fm']['api-secret']
@@ -164,6 +166,7 @@ if __name__ == "__main__":
     alive = True
     img_dims = (300, 300)
     previous_track = None
+    ALBUM_PLACEHOLDER = Image.open(ALBUM_PLACEHOLDER_PATH)
     while alive:
         try:
             new_track = user.get_now_playing()
@@ -193,13 +196,14 @@ if __name__ == "__main__":
                 try:
                     # Get the cover image (if it has one)
                     cover_image_url = playing_track.get_cover_image()
-                    urllib.request.urlretrieve(cover_image_url, SAVING_DIR / "image.png")
-                    img = Image.open(SAVING_DIR / "image.png")
+                    urllib.request.urlretrieve(cover_image_url, SAVING_DIR / ALBUM_ART_NAME)
+                    img = Image.open(SAVING_DIR / ALBUM_ART_NAME)
                     img_dims = img.size
                 except Exception as ie:
                     # see if its the same album as last time
                     if not check_same_album(playing_track, previous_track):
-                        write_blank_image(img_dims, album_name).save(SAVING_DIR / "image.png", "PNG")
+                        ALBUM_PLACEHOLDER.save(SAVING_DIR / ALBUM_ART_NAME)
+                       # write_blank_image(img_dims, album_name).save(SAVING_DIR / "image.png", "PNG")
 
                 # Write out the textual information to the formatter
                 track_out = format_all_info(track=track_name, artist=artist_name,
