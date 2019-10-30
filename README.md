@@ -7,8 +7,12 @@ Multiple music sources made this is a requirement.
 The `config.ini` file has two categories of options, namely, `LOCAL`, and `last.fm`
 ## `LOCAL`
 `LOCAL` considers how the data where and how the Last.FM data is stored
+
 `directory`: Select the directory where you'd like the Last.FM information to be stored
+
 `format`: The format in which you'd like the textual information displayed. The format options are:
+
+<center>
 
 |Option|Description|
 |---|---|
@@ -18,24 +22,33 @@ The `config.ini` file has two categories of options, namely, `LOCAL`, and `last.
 |\\\n | Newline character|
 |\\\t | Tab character|
 
+</center>
+
 ## `last.fm`
 The `last.fm` category only considers which username is to be examined
+
 `username`: The id of the user who you want to get Last.FM recently played data for (most likely your own account)
 
 
 # Issues
 There are several known issues:
 * Occasionally Last.fm will return bad information even if it displayed fine on the last.fm website. I'm investigating how to fix this
+
 * When using images with OBS, sometimes the image won't display. This is due to OBS's refreshing time when an image is updated
+
 * Some songs are just not listed on last.fm and will not be displayed. An error will instead be logged
+
 
 Any other issues please submit a bug request
 
 # Enhancements
 Several features coming soon:
 * More configurable config file
+
 * Better error handling
+
 * Display more music data
 
-![unknownalbumplaceholder.png](:/4c775f6e5b474812acafbd2d29fae3be)
+
+![unknownalbumplaceholder.png](assets/unknownalbumplaceholder.png)
 
